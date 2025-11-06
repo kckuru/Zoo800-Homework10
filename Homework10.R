@@ -11,9 +11,9 @@
 ## LTER Trout Bog Lake Color Data ##
 ####################################
 
-# Hypothesis: Water color (absorbance) in Trout Bog Lake, WI has increased over time
+# Hypothesis: Water color (mean absorbance) in Trout Bog Lake, WI has increased over time
 # due to rising dissolved organic carbon (DOM) concentrations. 
-# Expectation: Positive linear relationship between year and absorbance.
+# Expectation: Positive linear relationship between year and mean absorbance.
 
 # Load libraries
 library(tidyverse)
@@ -151,6 +151,102 @@ abs_trends_over_years
 
 
 # ===== Objective 2 ===== #
+
+# Goal: Evaluate how non-normal (lognormal) residuals affect regression uncertainty.
+
+# Load libraries
+library(tidyverse)
+
+set.seed(123)  # For reproducibility
+
+#################################
+## A. Simulate regression data ##
+#################################
+
+## Create a dataset where errors are non-normal (lognormal, skewed).
+
+# True model parameters
+true_intercept <- 2
+true_slope <- 3
+
+# Predictor (X) – 100 evenly spaced values, no error
+X <- seq(0, 10, length.out = 100)
+
+# Add *lognormal* error (unimodal but right-skewed)
+error <- rlnorm(100, meanlog = 0, sdlog = 0.5) - exp(0.5^2 / 2) # center around 0
+
+# Response (Y)
+Y <- true_intercept + true_slope * X + error
+
+# Put in dataframe
+data <- data.frame(X, Y)
+
+##############################
+## B. Fit linear regression ##
+##############################
+
+## Fit linear model to simulated data
+model <- lm(Y ~ X, data = data)
+summary(model)
+
+################################
+## C. Repeat simulation 1000× ##
+################################
+
+## Function to simulate once and fit model.
+
+simulate_once <- function() {
+  X <- seq(0, 10, length.out = 100)
+  error <- rlnorm(100, meanlog = 0, sdlog = 0.5) - exp(0.5^2 / 2)
+  Y <- true_intercept + true_slope * X + error
+  fit <- lm(Y ~ X)
+  c(intercept = coef(fit)[1], slope = coef(fit)[2])
+}
+
+# Run 1000 simulations
+set.seed(42)
+sims <- replicate(1000, simulate_once())
+sims_df <- as.data.frame(t(sims))
+
+##################################
+## D. Compare true vs estimated ##
+#################################
+
+mean_intercept <- mean(sims_df$intercept)
+mean_slope <- mean(sims_df$slope)
+
+cat("True intercept:", true_intercept, "\nEstimated mean intercept:", mean_intercept, "\n")
+cat("True slope:", true_slope, "\nEstimated mean slope:", mean_slope, "\n")
+
+# -> Expect the means to be close to true values, showing regression is *robust* to mild non-normality.
+
+#############################
+## E. Prediction intervals ##
+#############################
+
+# Example: one model, generate 95% prediction intervals for all X
+preds <- predict(model, newdata = data.frame(X = X), interval = "prediction", level = 0.95)
+pred_df <- cbind(data, preds)
+
+#######################################
+## F. Fraction of data inside 95% PI ##
+#######################################
+
+## Computes fraction of Y values within the 95% prediction interval
+
+inside <- mean(data$Y >= pred_df$lwr & data$Y <= pred_df$upr)
+cat("Fraction of Y within 95% prediction interval:", inside, "\n")
+
+#######################
+## G. Interpretation ##
+#######################
+
+## What does this imply for how your estimated uncertainty in the predictions compares to the true uncertainty?
+
+# -> If the fraction is close to 0.95, it suggests that despite non-normal residuals,
+# the linear regression model is still providing reliable uncertainty estimates for predictions.
+# -> If the fraction is significantly lower than 0.95, it indicates that the model's prediction intervals
+# may be too narrow, underestimating the true uncertainty due to the skewed residuals.
 
 
 
