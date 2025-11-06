@@ -7,13 +7,21 @@
 
 # ===== Objective 1 ===== #
 
-####################################
-## LTER Trout Bog Lake Color Data ##
-####################################
+########################################
+## NTL-LTER Trout Bog Lake Color Data ##
+########################################
 
-# Hypothesis: Water color (mean absorbance) in Trout Bog Lake, WI has increased over time
-# due to rising dissolved organic carbon (DOM) concentrations. 
+# Hypothesis: Water color (mean absorbance) in Trout Bog Lake, WI has increased over time due to rising dissolved organic carbon (DOM) concentrations. 
 # Expectation: Positive linear relationship between year and mean absorbance.
+# Data: Used ntl87_v13.csv dataset from NTL-LTER (EDI Database) in "data" folder.
+
+#######################################
+## 1A. Find two continuous variables ##
+#######################################
+
+# -> Variables:
+# 1. Year (from sampledate)
+# 2. Mean absorbance normalized to 1 cm path length (value / cuvette)
 
 # Load libraries
 library(tidyverse)
@@ -34,7 +42,7 @@ tb_data <- tb_data %>%
     month = month(sampledate)
   )
 
-# Filter for summer months: May (5) to August (8)
+# Filter for summer months: May (5) to August (8) --> we focus mainly on May-August
 summer_tb <- tb_data %>%
   filter(month %in% 5:8)
 
@@ -55,9 +63,9 @@ summer_summary <- summer_tb %>%
 
 print(summer_summary)
 
-##############################
-## B. Linear Regression Fit ##
-##############################
+###############################
+## 1B. Linear Regression Fit ##
+###############################
 
 # Fit linear model: mean absorbance (Y) vs. year (X)
 lm_model <- lm(mean_value ~ year, data = summer_summary)
@@ -74,25 +82,41 @@ annotation_text <- paste0(
   "R² = ", r_squared
 )
 
-#############################
-## C. Evaluate Assumptions ##
-#############################
+##############################
+## 1C. Evaluate Assumptions ##
+##############################
 
 # 1. Linearity: Residuals vs. Fitted plot
 plot(lm_model, which = 1)
-# → Residuals should be randomly scattered around 0; no clear curve or pattern.
+# -> Residuals should be randomly scattered around 0; no clear curve or pattern.
 
 # 2. Normality of residuals
 plot(lm_model, which = 2)
-# → Points should follow the 45° line. Deviations suggest non-normal residuals.
+# -> Points should follow the 45° line. Deviations suggest non-normal residuals.
 
 # 3. Homoscedasticity (equal variance)
 plot(lm_model, which = 3)
-# → Points should be evenly spread around zero. A funnel shape = unequal variance.
+# -> Points should be evenly spread around zero. A funnel shape = unequal variance.
 
-##########################
-## D. Predictions ########
-##########################
+# Extract residuals
+residuals_lm <- resid(lm_model)
+
+# 4. Histogram of residuals
+ggplot(data = data.frame(residuals = residuals_lm), aes(x = residuals)) +
+  geom_histogram(bins = 15, fill = "#2C7BB6", color = "black", alpha = 0.8) +
+  geom_vline(xintercept = 0, color = "red", linetype = "dashed") +
+  labs(
+    title = "Histogram of Residuals for Trout Bog Lake Regression",
+    x = "Residuals",
+    y = "Frequency"
+  ) +
+  theme_minimal(base_size = 14)
+
+# -> Check for normality and symmetry around 0.
+
+#####################
+## 1D. Predictions ##
+#####################
 
 # Find median and 95th percentile of year
 median_year <- median(summer_summary$year)
@@ -159,9 +183,9 @@ library(tidyverse)
 
 set.seed(123)  # For reproducibility
 
-#################################
-## A. Simulate regression data ##
-#################################
+##################################
+## 2A. Simulate regression data ##
+##################################
 
 ## Create a dataset where errors are non-normal (lognormal, skewed).
 
@@ -181,17 +205,17 @@ Y <- true_intercept + true_slope * X + error
 # Put in dataframe
 data <- data.frame(X, Y)
 
-##############################
-## B. Fit linear regression ##
-##############################
+###############################
+## 2B. Fit linear regression ##
+###############################
 
 ## Fit linear model to simulated data
 model <- lm(Y ~ X, data = data)
 summary(model)
 
-################################
-## C. Repeat simulation 1000× ##
-################################
+#################################
+## 2C. Repeat simulation 1000× ##
+#################################
 
 ## Function to simulate once and fit model.
 
@@ -208,9 +232,9 @@ set.seed(42)
 sims <- replicate(1000, simulate_once())
 sims_df <- as.data.frame(t(sims))
 
-##################################
-## D. Compare true vs estimated ##
-#################################
+###################################
+## 2D. Compare true vs estimated ##
+###################################
 
 mean_intercept <- mean(sims_df$intercept)
 mean_slope <- mean(sims_df$slope)
