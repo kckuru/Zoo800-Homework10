@@ -23,6 +23,12 @@
 # 1. Year (from sampledate)
 # 2. Mean absorbance normalized to 1 cm path length (value / cuvette)
 
+required_packages <- c("tidyverse", "lubridate", "here")
+install_if_missing <- function(pkg){
+  if (!require(pkg, character.only = TRUE)) install.packages(pkg)
+}
+invisible(sapply(required_packages, install_if_missing))
+
 # Load libraries
 library(tidyverse)
 library(lubridate)
